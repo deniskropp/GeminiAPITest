@@ -22,12 +22,14 @@ public:
     Q_INVOKABLE void generateContent(const QString &apiKey, const QString &promptText);
 
 signals:
-    void contentGenerated(const QString &result);
+    void contentChunkGenerated(const QString &result);
     void errorOccured(const QString &errorMsg);
+    void streamFinished();
 
 private:
     QNetworkAccessManager *networkManager;
 
+    QByteArray buffer;
 };
 
 #endif // GEMINIAPI_H

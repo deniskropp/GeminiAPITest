@@ -1,6 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include "geminiapi.h"
+#include "api/geminiapi.h"
 
 int main(int argc, char *argv[])
 {
@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<GeminiAPI>("GeminiAPI", 1,0, "GeminiAPI");
 
     QQmlApplicationEngine engine;
-    const QUrl url(u"qrc:/APITest/Main.qml"_qs);
+    const QUrl url(u"qrc:/APITest/resources/qml/Main.qml"_qs);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
         &app, []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);

@@ -4,22 +4,29 @@ import QtQuick.Controls
 import GeminiAPI 1.0
 
 ApplicationWindow {
+    id: app
     width: 640
     height: 480
     visible: true
     title: qsTr("Gemini API")
 
-    GeminiAPI{
+    property bool generating: false;
+
+    GeminiAPI {
         id: geminiAPI
-        onContentGenerated:{
-            resultText.text = result
+        onContentChunkGenerated: (result) => {
+            resultText.text += result
         }
-        onErrorOccured:{
+        onErrorOccured: (errorMsg) => {
             resultText.text = errorMsg
+            app.generating = false
+        }
+        onStreamFinished: {
+            app.generating = false
         }
     }
 
-    Rectangle{
+    Rectangle {
         id: container
         anchors.fill: parent
         color: "lightgray"
@@ -35,6 +42,8 @@ ApplicationWindow {
         Button{
             id: generateContentBtn
             text: "Generate content"
+            enabled: !generating
+
             anchors{
                 right: promptTA.right
                 top: promptTA.bottom
@@ -42,43 +51,33 @@ ApplicationWindow {
             }
 
             onClicked: {
-                geminiAPI.generateContent("AIzaSyCQ2P-Imyhc7dGiq2VxmqpIncAMP8BUy6U", promptTA.text)
+                resultText.text = ""
+                app.generating = true
+                geminiAPI.generateContent("", promptTA.text)
             }
         }
 
-        Text{
-            id: resultText
+        ScrollView{
+            id: resultTextScroll
             anchors{
                 left: parent.left
                 leftMargin: 10
                 top: generateContentBtn.bottom
                 topMargin: 10
+                right: parent.right
+                rightMargin: 10
+                bottom: parent.bottom
+                bottomMargin: 10
             }
-            wrapMode: Text.WordWrap
-            text: "Text will appear here"
+            clip: true
+
+            TextArea{
+                id: resultText
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "Text will appear here"
+                readOnly: true
+            }
         }
     }
-
-//    Connections{
-//        target: geminiAPI
-//        onContentGenerated:{
-//            resultText.text = result
-//        }
-//        onErrorOccured:{
-//            resultText.text = erroMsg
-//        }
-//    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

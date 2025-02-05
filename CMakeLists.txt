@@ -9,14 +9,18 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS Quick)
 qt_standard_project_setup()
 
 qt_add_executable(appAPITest
-    main.cpp
+    src/main.cpp
+    src/api/geminiapi.cpp
+    src/api/geminiapi.h
+    src/utils/Logger.cpp
+    src/utils/Logger.h
 )
 
 qt_add_qml_module(appAPITest
     URI APITest
     VERSION 1.0
-    QML_FILES Main.qml
-    SOURCES geminiapi.h geminiapi.cpp
+    QML_FILES resources/qml/Main.qml
+    SOURCES src/api/geminiapi.h src/api/geminiapi.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
