@@ -11,15 +11,16 @@
 #include <QDebug>
 #include <QJsonArray>
 
+#include "messagemodel.h"
+
 class GeminiAPI : public QObject
 {
     Q_OBJECT
 public:
-    explicit GeminiAPI(QObject *parent = nullptr) : QObject(parent){
-        networkManager = new QNetworkAccessManager(this);
-    }
+    explicit GeminiAPI(QObject *parent = nullptr);
 
     Q_INVOKABLE void generateContent(const QString &apiKey, const QString &promptText);
+    Q_INVOKABLE MessageModel* getMessageModel();
 
 signals:
     void contentChunkGenerated(const QString &result);
@@ -28,8 +29,7 @@ signals:
 
 private:
     QNetworkAccessManager *networkManager;
-
-    QByteArray buffer;
+    MessageModel *messageModel;
 };
 
 #endif // GEMINIAPI_H

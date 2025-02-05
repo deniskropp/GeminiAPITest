@@ -7,112 +7,131 @@
 #include <QUrlQuery>
 #include <qjsondocument.h>
 #include <qstringview.h>
+#include <qtenvironmentvariables.h>
 
-void GeminiAPI::generateContent(const QString &apiKey,
-                                const QString &promptText) {
-  // Construct the URL with the API key as a query parameter
-  QUrl url("https://generativelanguage.googleapis.com/v1beta/models/"
-           "gemini-2.0-flash-exp:streamGenerateContent");
-  QUrlQuery query;
-  query.addQueryItem("key", apiKey);
-  url.setQuery(query);
+GeminiAPI::GeminiAPI(QObject *parent) : QObject(parent) {
+    networkManager = new QNetworkAccessManager(this);
+    messageModel = new MessageModel(this);
+}
 
-  // Create the network request
-  QNetworkRequest request(url);
-  request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+void GeminiAPI::generateContent(const QString &apiKey, const QString &promptText) {
+    QString key = apiKey.isEmpty() ? qEnvironmentVariable("GEMINI_API_KEY") : apiKey;
 
-  // (Optional but recommended) Set the x-goog-api-key header
-  request.setRawHeader("x-goog-api-key", apiKey.toUtf8());
+    messageModel->addMessage(promptText, true);
 
-  // Create the correct JSON body for the Gemini API
-  QJsonObject requestBody;
-  QJsonArray contentsArray;
-  QJsonObject contentObject;
-  QJsonArray partsArray;
-  QJsonObject partObject;
+    // Construct the URL with the API key as a query parameter
+    QUrl url("https://generativelanguage.googleapis.com/v1beta/models/"
+             "gemini-2.0-flash-exp:streamGenerateContent");
+    QUrlQuery query;
+    query.addQueryItem("key", key);
+    url.setQuery(query);
 
-  partObject["text"] = promptText;
-  partsArray.append(partObject);
-  contentObject["parts"] = partsArray;
-  contentsArray.append(contentObject);
-  requestBody["contents"] = contentsArray;
+    // Create the network request
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-  // Convert JSON to QByteArray
-  QJsonDocument jsonDoc(requestBody);
-  QByteArray jsonData = jsonDoc.toJson();
+    // (Optional but recommended) Set the x-goog-api-key header
+    request.setRawHeader("x-goog-api-key", key.toUtf8());
 
-  // Send POST request
-  QNetworkReply *reply = networkManager->post(request, jsonData);
+    // Create the correct JSON body for the Gemini API
+    QJsonObject requestBody;
+    QJsonArray contentsArray;
+    QJsonObject contentObject;
+    QJsonArray partsArray;
+    QJsonObject partObject;
 
-  connect(reply, &QNetworkReply::readyRead, this, [this, reply]() {
-    QByteArray data = reply->readAll();
+    partObject["text"] = promptText;
+    partsArray.append(partObject);
+    contentObject["parts"] = partsArray;
+    contentsArray.append(contentObject);
+    requestBody["contents"] = contentsArray;
 
-    qDebug() << "\n\n" << data << "\n\n";
+    // Convert JSON to QByteArray
+    QJsonDocument jsonDoc(requestBody);
+    QByteArray jsonData = jsonDoc.toJson();
 
-    if (data == "]")
-      return;
+    // Send POST request
+    QNetworkReply *reply = networkManager->post(request, jsonData);
 
-    if (data.startsWith("[") || data.startsWith(","))
-      data = data.mid(1);
+    connect(reply, &QNetworkReply::readyRead, this, [this, reply]() {
+        QByteArray all = reply->readAll();
 
-    if (data.endsWith("]"))
-      data = data.mid(0, data.size() - 1);
+        QList<QByteArray> chunks = all.split('\r');
 
-    if (data.endsWith("\n"))
-      data = data.mid(0, data.size() - 1);
+        for (const auto &chunk : chunks) {
+            // Handle each chunk here
+            QByteArray data = chunk;
 
-    if (!data.isEmpty()) {
-      QJsonParseError error;
-      QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+            //qDebug() << "\n\n" << data << "\n\n";
 
-      if (error.error == QJsonParseError::NoError) {
-        if (doc.isObject()) {
-          QJsonObject root = doc.object();
-          if (root.contains("candidates") && root["candidates"].isArray()) {
-            QJsonArray candidates = root["candidates"].toArray();
-            if (!candidates.isEmpty() && candidates[0].isObject()) {
-              QJsonObject candidate = candidates[0].toObject();
-              if (candidate.contains("content") &&
-                  candidate["content"].isObject()) {
-                QJsonObject content = candidate["content"].toObject();
-                if (content.contains("parts") && content["parts"].isArray()) {
-                  QJsonArray parts = content["parts"].toArray();
-                  if (!parts.isEmpty() && parts[0].isObject()) {
-                    QJsonObject part = parts[0].toObject();
-                    if (part.contains("text") && part["text"].isString()) {
-                      qDebug()
-                          << "\n\n::" << part["text"].toString() << "::\n\n";
-                      emit contentChunkGenerated(part["text"].toString());
+            if (data == "]")
+                return;
+
+            if (data.startsWith("[") || data.startsWith(","))
+                data = data.mid(1);
+
+            if (data.endsWith("]"))
+                data = data.mid(0, data.size() - 1);
+
+            if (data.endsWith(","))
+                data = data.mid(0, data.size() - 1);
+
+            if (!data.isEmpty()) {
+                QJsonParseError error;
+                QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+
+                if (error.error == QJsonParseError::NoError) {
+                    if (doc.isObject()) {
+                        QJsonObject root = doc.object();
+                        if (root.contains("candidates") && root["candidates"].isArray()) {
+                            QJsonArray candidates = root["candidates"].toArray();
+                            if (!candidates.isEmpty() && candidates[0].isObject()) {
+                                QJsonObject candidate = candidates[0].toObject();
+                                if (candidate.contains("content") && candidate["content"].isObject()) {
+                                    QJsonObject content = candidate["content"].toObject();
+                                    if (content.contains("parts") && content["parts"].isArray()) {
+                                        QJsonArray parts = content["parts"].toArray();
+                                        if (!parts.isEmpty() && parts[0].isObject()) {
+                                            QJsonObject part = parts[0].toObject();
+                                            if (part.contains("text") && part["text"].isString()) {
+                                                //qDebug() << "\n\n::" << part["text"].toString() << "::\n\n";
+                                                emit contentChunkGenerated(part["text"].toString());
+
+                                                if (messageModel->rowCount() == 0 || messageModel->data(messageModel->index(messageModel->rowCount() - 1), MessageModel::IsUserRole).toBool())
+                                                    messageModel->addMessage(part["text"].toString(), false);
+                                                else
+                                                    messageModel->appendToLastMessage(part["text"].toString());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                  }
+                } else {
+                    qDebug() << "JSON parsing error:" << error.errorString() << "\n\n" << data << "\n\n";
+                    emit errorOccured(error.errorString());
                 }
-              }
             }
-          }
         }
-      } else {
-        qDebug() << "JSON parsing error:" << error.errorString() << "\n\n"
-                 << data << "\n\n";
-        emit errorOccured(error.errorString());
-        buffer.clear();
-      }
-    }
-  });
+    });
 
-  connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-    if (reply->error() == QNetworkReply::NoError) {
-      // Optionally signal end of streaming
-      emit streamFinished();
-    } else {
-      // Print error details
-      qDebug() << "Error:" << reply->errorString();
-      qDebug()
-          << "HTTP status code:"
-          << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-      qDebug() << "Response headers:" << reply->rawHeaderList();
-      qDebug() << "Response body:" << reply->readAll();
-      emit errorOccured(reply->errorString());
-    }
-    reply->deleteLater();
-  });
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        if (reply->error() == QNetworkReply::NoError) {
+            // Optionally signal end of streaming
+            emit streamFinished();
+        } else {
+            // Print error details
+            qDebug() << "Error:" << reply->errorString();
+            qDebug() << "HTTP status code:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            qDebug() << "Response headers:" << reply->rawHeaderList();
+            qDebug() << "Response body:" << reply->readAll();
+            emit errorOccured(reply->errorString());
+        }
+        reply->deleteLater();
+    });
+}
+
+MessageModel *GeminiAPI::getMessageModel() {
+    return messageModel;
 }

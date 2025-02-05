@@ -12,6 +12,10 @@ qt_add_executable(appAPITest
     src/main.cpp
     src/api/geminiapi.cpp
     src/api/geminiapi.h
+    src/api/message.cpp
+    src/api/message.h
+    src/api/messagemodel.cpp
+    src/api/messagemodel.h
     src/utils/Logger.cpp
     src/utils/Logger.h
 )

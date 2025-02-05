@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
@@ -31,52 +33,100 @@ ApplicationWindow {
         anchors.fill: parent
         color: "lightgray"
 
-        TextArea{
-            id: promptTA
-            width: parent.width* .95
-            height: parent.height* .5
-            placeholderText: "Enter prompt..."
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
+        Column {
+            id: c1
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 10
+            anchors.margins: 10
 
-        Button{
-            id: generateContentBtn
-            text: "Generate content"
-            enabled: !generating
-
-            anchors{
-                right: promptTA.right
-                top: promptTA.bottom
-                topMargin: 10
-            }
-
-            onClicked: {
-                resultText.text = ""
-                app.generating = true
-                geminiAPI.generateContent("", promptTA.text)
-            }
-        }
-
-        ScrollView{
-            id: resultTextScroll
-            anchors{
-                left: parent.left
-                leftMargin: 10
-                top: generateContentBtn.bottom
-                topMargin: 10
-                right: parent.right
-                rightMargin: 10
-                bottom: parent.bottom
-                bottomMargin: 10
-            }
-            clip: true
-
-            TextArea{
-                id: resultText
+            ScrollView{
+                id: promptTextScroll
                 width: parent.width
-                wrapMode: Text.WordWrap
-                text: "Text will appear here"
-                readOnly: true
+                height: app.height * .3
+                clip: true
+
+                TextArea{
+                    id: promptTA
+                    width: parent.width
+                    placeholderText: "Enter prompt..."
+                }
+            }
+
+            Button{
+                id: generateContentBtn
+                text: "Generate content"
+                enabled: !app.generating
+
+                onClicked: {
+                    resultText.text = ""
+                    app.generating = true
+                    geminiAPI.generateContent("", promptTA.text)
+                }
+            }
+
+            ScrollView{
+                id: resultTextScroll
+                width: parent.width
+                height: parent.height * .3
+                clip: true
+                visible: false
+
+                TextArea{
+                    id: resultText
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: "Text will appear here"
+                    readOnly: true
+                }
+            }
+        }
+
+        Column {
+            id: c2
+            anchors.top: c1.bottom
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            anchors.margins: 10
+            ListView {
+                id: messagesView
+                width: parent.width
+                height: parent.height// * .3
+                clip: true
+                model: geminiAPI.getMessageModel()
+                spacing: 1
+                delegate: Rectangle {
+                    id: messageDelegate
+
+                    required property bool isUser
+                    required property string text
+
+                    width: messagesView.width
+                    radius: 2
+                    border.width: 1
+                    border.color: "red"
+                    height: childrenRect.height + 10
+                    color: isUser ? "lightblue" : "lightgreen"
+
+                    Column {
+                        spacing: 10
+
+                        Text {
+                            text: messageDelegate.isUser ? "User" : "Model"
+                            font.bold: true
+                            topPadding: 5
+                            leftPadding: 10
+                        }
+
+                        Text {
+                            text: messageDelegate.text
+                            wrapMode: Text.WordWrap
+                            leftPadding: 10
+                        }
+                    }
+                }
             }
         }
     }
