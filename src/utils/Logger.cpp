@@ -2,6 +2,8 @@
 
 void Logger::log(LogLevel level, const QString &message)
 {
+    qDebug() << message;
+
     QJsonObject logObject;
     logObject["timestamp"] = currentDateTime();
     logObject["level"] = logLevelToString(level);
@@ -10,7 +12,7 @@ void Logger::log(LogLevel level, const QString &message)
     QJsonDocument doc(logObject);
     QString logEntry = doc.toJson(QJsonDocument::Compact);
 
-    QFile file("app.log");
+    QFile file("app_log.jsonl");
     if (file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&file);
         out << logEntry << "\n";

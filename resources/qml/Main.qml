@@ -4,6 +4,8 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import GeminiAPI 1.0
+import Logger 1.0
+
 
 ApplicationWindow {
     id: app
@@ -17,14 +19,18 @@ ApplicationWindow {
     GeminiAPI {
         id: geminiAPI
         onContentChunkGenerated: (result) => {
+            Logger.debug(`onContentChunkGenerated(): ${result}`)
             resultText.text += result
         }
         onErrorOccured: (errorMsg) => {
-            resultText.text = errorMsg
             app.generating = false
+            Logger.error(`onErrorOccured(): ${errorMsg}`)
+            resultText.text = errorMsg
         }
         onStreamFinished: {
             app.generating = false
+            Logger.info(`onStreamFinished(): ${resultText.text}`)
+            resultText.text = ""
         }
     }
 
@@ -60,8 +66,8 @@ ApplicationWindow {
                 enabled: !app.generating
 
                 onClicked: {
-                    resultText.text = ""
                     app.generating = true
+                    Logger.info("generateContentBtn.clicked")
                     geminiAPI.generateContent("", promptTA.text)
                 }
             }
@@ -77,7 +83,7 @@ ApplicationWindow {
                     id: resultText
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: "Text will appear here"
+                    placeholderText: "Text will appear here"
                     readOnly: true
                 }
             }
